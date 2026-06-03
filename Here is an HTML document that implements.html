@@ -1,0 +1,639 @@
+Here is an HTML document that implements a complete "StockAlert Pharmacy" inventory management web application with all the requested features.
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>StockAlert Pharmacy | Inventory & Expiry Tracker</title>
+  <!-- Font Awesome 6 (free) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <!-- Google Fonts: Inter for clean modern look -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+  <!-- Chart.js CDN for simple expiry trend -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #f0f4f8;
+      color: #1e293b;
+      padding: 20px;
+    }
+
+    /* main app container */
+    .app-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 32px;
+      box-shadow: 0 20px 35px -12px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+
+    /* header area */
+    .app-header {
+      background: linear-gradient(135deg, #0f2b3d 0%, #1b4a6e 100%);
+      color: white;
+      padding: 1.2rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .logo h1 {
+      font-size: 1.7rem;
+      letter-spacing: -0.3px;
+    }
+    .logo p {
+      font-size: 0.8rem;
+      opacity: 0.85;
+    }
+    .badge-alert {
+      background: #ffb347;
+      padding: 6px 12px;
+      border-radius: 40px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #1e293b;
+    }
+
+    /* bottom navigation for mobile/responsive: but we use flex row for tabs */
+    .nav-tabs {
+      display: flex;
+      background: #ffffff;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 0 1rem;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .tab-btn {
+      background: transparent;
+      border: none;
+      padding: 1rem 1.4rem;
+      font-size: 1rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      color: #5b6e8c;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-radius: 40px 40px 0 0;
+    }
+    .tab-btn i {
+      font-size: 1.2rem;
+    }
+    .tab-btn.active {
+      color: #1e7b9e;
+      border-bottom: 3px solid #1e7b9e;
+      background: #f0f9ff;
+    }
+    .tab-btn:hover:not(.active) {
+      background: #f1f5f9;
+      color: #0f2b3d;
+    }
+
+    /* main content */
+    .content-pane {
+      padding: 2rem;
+      background: #ffffff;
+      min-height: 550px;
+    }
+    .tab-pane {
+      display: none;
+      animation: fade 0.2s ease;
+    }
+    .tab-pane.active-pane {
+      display: block;
+    }
+    @keyframes fade {
+      from { opacity: 0; transform: translateY(6px);}
+      to { opacity: 1; transform: translateY(0);}
+    }
+
+    /* cards & grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    .stat-card {
+      background: #f8fafc;
+      border-radius: 24px;
+      padding: 1.2rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+      border: 1px solid #e2edf2;
+    }
+    .stat-title {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #5b6e8c;
+    }
+    .stat-number {
+      font-size: 2.2rem;
+      font-weight: 800;
+      margin: 8px 0;
+      color: #0f2b3d;
+    }
+    .warning-list {
+      background: #fff9e6;
+      border-left: 5px solid #f4b942;
+    }
+    .expired-list {
+      background: #ffeaea;
+      border-left: 5px solid #e53e3e;
+    }
+    .btn-primary {
+      background: #1e7b9e;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 60px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.2s;
+      font-size: 0.9rem;
+    }
+    .btn-primary:hover {
+      background: #0f5a75;
+    }
+    .btn-outline {
+      background: white;
+      border: 1px solid #cbd5e1;
+      padding: 8px 14px;
+      border-radius: 40px;
+      cursor: pointer;
+    }
+    /* table */
+    .inventory-table {
+      width: 100%;
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      text-align: left;
+      padding: 12px 8px;
+      border-bottom: 1px solid #e2edf2;
+    }
+    th {
+      background: #f1f9fe;
+      font-weight: 600;
+    }
+    .status-badge {
+      padding: 4px 10px;
+      border-radius: 30px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      display: inline-block;
+    }
+    .low-stock { background: #fee2e2; color: #b91c1c; }
+    .near-expiry { background: #fff3cd; color: #b85c00; }
+    .expired { background: #e53e3e20; color: #b91c1c; }
+    .good { background: #e0f2e9; color: #0e6b3e; }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top:0;left:0;width:100%;height:100%;
+      background: rgba(0,0,0,0.5);
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+    .modal-card {
+      background: white;
+      max-width: 550px;
+      width: 90%;
+      border-radius: 32px;
+      padding: 1.8rem;
+      max-height: 85vh;
+      overflow-y: auto;
+    }
+    .form-group {
+      margin-bottom: 1rem;
+    }
+    label {
+      font-weight: 500;
+      display: block;
+      margin-bottom: 6px;
+    }
+    input, select {
+      width: 100%;
+      padding: 10px;
+      border-radius: 20px;
+      border: 1px solid #ccc;
+      font-family: inherit;
+    }
+    .flex-btns {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      margin-top: 1rem;
+    }
+    .search-bar {
+      margin-bottom: 1rem;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .action-icon {
+      cursor: pointer;
+      margin: 0 4px;
+      color: #4a627a;
+    }
+    @media (max-width: 700px) {
+      .content-pane { padding: 1rem; }
+      .tab-btn span { display: none; }
+      .tab-btn i { margin: 0; font-size: 1.5rem; }
+      .tab-btn { padding: 0.8rem; }
+    }
+  </style>
+</head>
+<body>
+<div class="app-container">
+  <div class="app-header">
+    <div class="logo">
+      <h1><i class="fas fa-capsules"></i> StockAlert Pharmacy</h1>
+      <p>inventory · expiry · supplier orders</p>
+    </div>
+    <div class="badge-alert"><i class="fas fa-bell"></i> Real-time alerts</div>
+  </div>
+
+  <div class="nav-tabs">
+    <button class="tab-btn active" data-tab="dashboard"><i class="fas fa-chart-line"></i><span> Dashboard</span></button>
+    <button class="tab-btn" data-tab="inventory"><i class="fas fa-tablets"></i><span> Inventory</span></button>
+    <button class="tab-btn" data-tab="orders"><i class="fas fa-truck"></i><span> Supplier Orders</span></button>
+  </div>
+
+  <div class="content-pane">
+    <!-- DASHBOARD -->
+    <div id="dashboardPane" class="tab-pane active-pane">
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-title"><i class="fas fa-pills"></i> Total Medicines</div><div class="stat-number" id="totalMedicines">0</div></div>
+        <div class="stat-card"><div class="stat-title"><i class="fas fa-dollar-sign"></i> Stock Value (USD)</div><div class="stat-number" id="totalValue">$0</div></div>
+        <div class="stat-card"><div class="stat-title"><i class="fas fa-exclamation-triangle"></i> Low Stock Items</div><div class="stat-number" id="lowStockCount">0</div></div>
+        <div class="stat-card"><div class="stat-title"><i class="fas fa-hourglass-half"></i> Near Expiry (≤30d)</div><div class="stat-number" id="nearExpiryCount">0</div></div>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card warning-list"><div class="stat-title"><i class="fas fa-list"></i> ⚠️ Low Stock Alerts</div><ul id="lowStockList" style="margin-top: 8px; padding-left: 18px;"><li>— No alerts —</li></ul></div>
+        <div class="stat-card expired-list"><div class="stat-title"><i class="fas fa-calendar-times"></i> ⏰ Near-Expiry (≤30 days)</div><ul id="nearExpiryList" style="margin-top: 8px; padding-left: 18px;"><li>— No items —</li></ul></div>
+      </div>
+      <div style="margin-top: 1rem; background: #f9f9ff; padding: 1rem; border-radius: 24px;">
+        <h4><i class="fas fa-chart-simple"></i> Expiry Trend (items expiring next 3 months)</h4>
+        <canvas id="expiryChart" style="max-height: 250px; width:100%"></canvas>
+      </div>
+      <div style="display: flex; gap: 1rem; margin-top: 1.5rem; flex-wrap: wrap;">
+        <button id="quickAddBtn" class="btn-primary"><i class="fas fa-plus-circle"></i> Add Medicine</button>
+        <button id="quickScanBtn" class="btn-primary"><i class="fas fa-barcode"></i> Scan Barcode</button>
+        <button id="quickOrderBtn" class="btn-primary"><i class="fas fa-clipboard-list"></i> Create Order</button>
+      </div>
+    </div>
+
+    <!-- INVENTORY PANE -->
+    <div id="inventoryPane" class="tab-pane">
+      <div class="search-bar">
+        <input type="text" id="searchInventory" placeholder="🔍 Search by name, supplier, barcode..." style="flex:1">
+        <button id="manualAddBtn" class="btn-primary"><i class="fas fa-plus"></i> Add Medicine</button>
+        <button id="scanFromInventoryBtn" class="btn-outline"><i class="fas fa-camera"></i> Scan</button>
+      </div>
+      <div class="inventory-table">
+        <table id="inventoryTable">
+          <thead>
+            <tr><th>Name</th><th>Barcode</th><th>Qty</th><th>Expiry</th><th>Days Left</th><th>Status</th><th>Actions</th></tr>
+          </thead>
+          <tbody id="inventoryTbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- SUPPLIER ORDERS PANE -->
+    <div id="ordersPane" class="tab-pane">
+      <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
+        <h3><i class="fas fa-truck-ramp-box"></i> Supplier Orders</h3>
+        <button id="newOrderBtn" class="btn-primary"><i class="fas fa-cart-plus"></i> + New Order</button>
+      </div>
+      <div id="ordersListContainer">
+        <p style="color: gray;">No orders yet. Click "New Order" to request stock from suppliers.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Add/Edit Medicine -->
+<div id="medicineModal" class="modal">
+  <div class="modal-card">
+    <h3 id="modalTitle"><i class="fas fa-prescription-bottle"></i> Add Medicine</h3>
+    <form id="medicineForm">
+      <div class="form-group"><label>Medicine Name *</label><input type="text" id="medName" required></div>
+      <div class="form-group"><label>Barcode (optional)</label><input type="text" id="medBarcode" placeholder="scan or manual"></div>
+      <div class="form-group"><label>Quantity in Stock *</label><input type="number" id="medQty" value="0" min="0" required></div>
+      <div class="form-group"><label>Expiry Date *</label><input type="date" id="medExpiry" required></div>
+      <div class="form-group"><label>Purchase Price ($)</label><input type="number" step="0.01" id="medPurchasePrice"></div>
+      <div class="form-group"><label>Selling Price ($)</label><input type="number" step="0.01" id="medSellingPrice"></div>
+      <div class="form-group"><label>Supplier Name</label><input type="text" id="medSupplier" placeholder="e.g. MedSource"></div>
+      <div class="form-group"><label>Category</label><input type="text" id="medCategory" placeholder="Painkiller, Antibiotic etc"></div>
+      <div class="flex-btns"><button type="button" id="closeModalBtn" class="btn-outline">Cancel</button><button type="submit" class="btn-primary">Save Medicine</button></div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL: New Supplier Order -->
+<div id="orderModal" class="modal">
+  <div class="modal-card">
+    <h3>Create Order <i class="fas fa-file-invoice"></i></h3>
+    <div class="form-group"><label>Supplier Name</label><input type="text" id="orderSupplier" placeholder="Supplier name" required></div>
+    <div class="form-group"><label>Select Medicine (Low stock items suggested)</label><select id="orderMedicineSelect"></select></div>
+    <div class="form-group"><label>Quantity to Order</label><input type="number" id="orderQty" min="1" value="50"></div>
+    <div class="form-group"><label>Notes (optional)</label><textarea id="orderNotes" rows="2" placeholder="Urgent, etc"></textarea></div>
+    <div class="flex-btns"><button id="closeOrderModal" class="btn-outline">Cancel</button><button id="saveOrderBtn" class="btn-primary">Place Order</button></div>
+  </div>
+</div>
+
+<script>
+  // ------------------- DATA MODEL -------------------
+  let medicines = [];     // each object: id, name, barcode, quantity, expiry, purchasePrice, sellingPrice, supplier, category
+  let orders = [];        // { id, supplier, medicineId, medicineName, quantity, notes, status, date }
+
+  // Load sample data for demo
+  function loadSampleData() {
+    if(medicines.length === 0) {
+      medicines.push({ id: "1", name: "Paracetamol 500mg", barcode: "890123456789", quantity: 45, expiry: "2026-05-20", purchasePrice: 2.5, sellingPrice: 5.0, supplier: "ABC Pharma", category: "Painkiller" });
+      medicines.push({ id: "2", name: "Amoxicillin 250mg", barcode: "890987654321", quantity: 8, expiry: "2025-12-15", purchasePrice: 3.2, sellingPrice: 7.0, supplier: "HealthCare Ltd", category: "Antibiotic" });
+      medicines.push({ id: "3", name: "Cetirizine Syrup", barcode: "345678901234", quantity: 120, expiry: "2026-02-10", purchasePrice: 1.8, sellingPrice: 4.5, supplier: "Remedies", category: "Syrup" });
+      medicines.push({ id: "4", name: "Insulin Pen", barcode: "112233445566", quantity: 3, expiry: "2025-06-01", purchasePrice: 12.0, sellingPrice: 25.0, supplier: "DiabeticCare", category: "Hormones" });
+      medicines.push({ id: "5", name: "Vitamin C tabs", barcode: "998877665544", quantity: 200, expiry: "2026-10-30", purchasePrice: 4.0, sellingPrice: 8.0, supplier: "NutriCorp", category: "Supplement" });
+    }
+    if(orders.length === 0) {
+      orders.push({ id: "ord1", supplier: "ABC Pharma", medicineId: "1", medicineName: "Paracetamol 500mg", quantity: 100, notes: "regular restock", status: "Ordered", date: new Date().toLocaleDateString() });
+    }
+    renderAll();
+  }
+
+  // helper days until expiry
+  function daysUntilExpiry(expiryDateStr) {
+    const today = new Date(); today.setHours(0,0,0,0);
+    const expiry = new Date(expiryDateStr);
+    const diff = Math.ceil((expiry - today) / (1000*60*60*24));
+    return diff;
+  }
+
+  function getStockStatus(medicine) {
+    let days = daysUntilExpiry(medicine.expiry);
+    if(days < 0) return "expired";
+    if(medicine.quantity <= 10) return "low-stock";
+    if(days <= 30) return "near-expiry";
+    return "good";
+  }
+
+  // render dashboard + inventory table + orders + chart
+  let expiryChartInstance = null;
+
+  function updateDashboard() {
+    const total = medicines.length;
+    const totalValue = medicines.reduce((sum, m) => sum + (m.quantity * (m.sellingPrice || 0)), 0);
+    const lowStockItems = medicines.filter(m => m.quantity <= 10);
+    const nearExpiryItems = medicines.filter(m => {
+      let days = daysUntilExpiry(m.expiry);
+      return days <= 30 && days >= 0;
+    });
+    document.getElementById("totalMedicines").innerText = total;
+    document.getElementById("totalValue").innerText = `$${totalValue.toFixed(2)}`;
+    document.getElementById("lowStockCount").innerText = lowStockItems.length;
+    document.getElementById("nearExpiryCount").innerText = nearExpiryItems.length;
+
+    const lowListUl = document.getElementById("lowStockList");
+    if(lowStockItems.length === 0) lowListUl.innerHTML = "<li>✅ No low stock</li>";
+    else lowListUl.innerHTML = lowStockItems.map(m => `<li><strong>${m.name}</strong> (Qty: ${m.quantity})</li>`).join("");
+    
+    const nearListUl = document.getElementById("nearExpiryList");
+    if(nearExpiryItems.length === 0) nearListUl.innerHTML = "<li>✅ No near expiry</li>";
+    else nearListUl.innerHTML = nearExpiryItems.map(m => `<li><strong>${m.name}</strong> expires ${m.expiry} (${daysUntilExpiry(m.expiry)} days)</li>`).join("");
+
+    // expiry trend chart (next 3 months grouped by month)
+    const now = new Date();
+    const months = ["0-30d", "31-60d", "61-90d"];
+    let counts = [0,0,0];
+    medicines.forEach(med => {
+      let days = daysUntilExpiry(med.expiry);
+      if(days >= 0 && days <= 90) {
+        if(days <= 30) counts[0]++;
+        else if(days <= 60) counts[1]++;
+        else if(days <= 90) counts[2]++;
+      }
+    });
+    const ctx = document.getElementById('expiryChart').getContext('2d');
+    if(expiryChartInstance) expiryChartInstance.destroy();
+    expiryChartInstance = new Chart(ctx, {
+      type: 'bar',
+      data: { labels: months, datasets: [{ label: 'Expiring items', data: counts, backgroundColor: '#3b82f6' }] },
+      options: { responsive: true, maintainAspectRatio: true }
+    });
+  }
+
+  function renderInventoryTable(filterText = "") {
+    let filtered = medicines.filter(m => m.name.toLowerCase().includes(filterText.toLowerCase()) || (m.barcode && m.barcode.includes(filterText)) || (m.supplier && m.supplier.toLowerCase().includes(filterText.toLowerCase())));
+    const tbody = document.getElementById("inventoryTbody");
+    if(filtered.length === 0) { tbody.innerHTML = "<tr><td colspan='7'>No medicines found</td></tr>"; return; }
+    tbody.innerHTML = filtered.map(med => {
+      let days = daysUntilExpiry(med.expiry);
+      let statusText = "", statusClass = "";
+      const stat = getStockStatus(med);
+      if(stat === "low-stock") { statusText = "⚠️ Low Stock"; statusClass="low-stock"; }
+      else if(stat === "near-expiry") { statusText = "⏳ Near Expiry"; statusClass="near-expiry"; }
+      else if(stat === "expired") { statusText = "❌ Expired"; statusClass="expired"; }
+      else { statusText = "✓ Good"; statusClass="good"; }
+      return `<tr>
+        <td>${med.name}</td><td>${med.barcode || "—"}</td><td>${med.quantity}</td><td>${med.expiry}</td>
+        <td>${days < 0 ? "Expired" : days+" days"}</td>
+        <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+        <td><i class="fas fa-edit action-icon edit-med" data-id="${med.id}"></i> 
+            <i class="fas fa-plus-circle action-icon inc-stock" data-id="${med.id}" title="Increase Stock"></i>
+            <i class="fas fa-minus-circle action-icon dec-stock" data-id="${med.id}" title="Decrease (sell)"></i>
+        </td>
+      </tr>`;
+    }).join("");
+    // attach events after render
+    document.querySelectorAll('.edit-med').forEach(btn => btn.addEventListener('click', (e) => openEditMedicine(btn.dataset.id)));
+    document.querySelectorAll('.inc-stock').forEach(btn => btn.addEventListener('click', (e) => adjustStock(btn.dataset.id, +10)));
+    document.querySelectorAll('.dec-stock').forEach(btn => btn.addEventListener('click', (e) => adjustStock(btn.dataset.id, -1)));
+  }
+
+  function adjustStock(id, delta) {
+    let med = medicines.find(m => m.id === id);
+    if(med) {
+      let newQty = med.quantity + delta;
+      if(newQty < 0) { alert("Stock cannot be negative"); return; }
+      med.quantity = newQty;
+      renderAll();
+    }
+  }
+
+  function openEditMedicine(id) {
+    const med = medicines.find(m => m.id === id);
+    if(med) {
+      document.getElementById("medName").value = med.name;
+      document.getElementById("medBarcode").value = med.barcode || "";
+      document.getElementById("medQty").value = med.quantity;
+      document.getElementById("medExpiry").value = med.expiry;
+      document.getElementById("medPurchasePrice").value = med.purchasePrice || "";
+      document.getElementById("medSellingPrice").value = med.sellingPrice || "";
+      document.getElementById("medSupplier").value = med.supplier || "";
+      document.getElementById("medCategory").value = med.category || "";
+      window.currentEditId = id;
+      document.getElementById("modalTitle").innerText = "✏️ Edit Medicine";
+      document.getElementById("medicineModal").style.display = "flex";
+    }
+  }
+
+  function renderOrders() {
+    const container = document.getElementById("ordersListContainer");
+    if(orders.length === 0) { container.innerHTML = "<p>No orders yet. Click 'New Order' to request stock from suppliers.</p>"; return; }
+    container.innerHTML = orders.map(order => `
+      <div style="border:1px solid #e2edf2; border-radius: 20px; margin-bottom: 12px; padding: 14px;">
+        <div style="display:flex; justify-content:space-between;"><strong>${order.supplier}</strong> <span class="status-badge ${order.status === 'Received' ? 'good' : 'near-expiry'}">${order.status}</span></div>
+        <div>Medicine: ${order.medicineName} | Qty: ${order.quantity} | ${order.notes ? "📝"+order.notes:""}</div>
+        <div>Ordered: ${order.date}</div>
+        <div style="margin-top:8px;"><button class="btn-outline mark-received" data-id="${order.id}" style="padding:4px 12px;">✔ Mark Received</button></div>
+      </div>
+    `).join("");
+    document.querySelectorAll('.mark-received').forEach(btn => btn.addEventListener('click', (e) => {
+      const orderId = btn.dataset.id;
+      let order = orders.find(o => o.id === orderId);
+      if(order && order.status !== "Received") {
+        order.status = "Received";
+        // increase stock of associated medicine
+        let med = medicines.find(m => m.id === order.medicineId);
+        if(med) {
+          med.quantity += order.quantity;
+          alert(`Stock for ${med.name} increased by ${order.quantity}`);
+        } else {
+          alert("Medicine not found, but order marked received.");
+        }
+        renderAll();
+      } else alert("Already received");
+    }));
+  }
+
+  function saveMedicineFromModal(event) {
+    event.preventDefault();
+    const name = document.getElementById("medName").value.trim();
+    if(!name) return alert("Medicine name required");
+    const barcode = document.getElementById("medBarcode").value.trim();
+    const quantity = parseInt(document.getElementById("medQty").value);
+    const expiry = document.getElementById("medExpiry").value;
+    const purchasePrice = parseFloat(document.getElementById("medPurchasePrice").value) || 0;
+    const sellingPrice = parseFloat(document.getElementById("medSellingPrice").value) || 0;
+    const supplier = document.getElementById("medSupplier").value.trim();
+    const category = document.getElementById("medCategory").value.trim();
+    if(!expiry) return alert("Expiry date required");
+    if(window.currentEditId) {
+      let med = medicines.find(m => m.id === window.currentEditId);
+      if(med) { med.name = name; med.barcode = barcode; med.quantity = quantity; med.expiry = expiry; med.purchasePrice = purchasePrice; med.sellingPrice = sellingPrice; med.supplier = supplier; med.category = category; }
+      window.currentEditId = null;
+    } else {
+      const newId = Date.now().toString();
+      medicines.push({ id: newId, name, barcode, quantity, expiry, purchasePrice, sellingPrice, supplier, category });
+    }
+    closeModal();
+    renderAll();
+  }
+
+  function closeModal() { document.getElementById("medicineModal").style.display = "none"; window.currentEditId = null; document.getElementById("medicineForm").reset(); }
+  function closeOrderModalFunc() { document.getElementById("orderModal").style.display = "none"; }
+
+  function openNewOrder() {
+    const select = document.getElementById("orderMedicineSelect");
+    select.innerHTML = medicines.map(m => `<option value="${m.id}" data-name="${m.name}">${m.name} (stock: ${m.quantity})</option>`).join("");
+    if(medicines.length === 0) { alert("Add medicines first"); return; }
+    document.getElementById("orderSupplier").value = "";
+    document.getElementById("orderQty").value = 50;
+    document.getElementById("orderNotes").value = "";
+    document.getElementById("orderModal").style.display = "flex";
+  }
+
+  function placeOrder() {
+    const supplier = document.getElementById("orderSupplier").value.trim();
+    const medId = document.getElementById("orderMedicineSelect").value;
+    const qty = parseInt(document.getElementById("orderQty").value);
+    const notes = document.getElementById("orderNotes").value;
+    if(!supplier || !medId || qty <=0) return alert("Supplier and quantity required");
+    const med = medicines.find(m => m.id === medId);
+    if(!med) return;
+    const newOrder = { id: "ord_"+Date.now(), supplier, medicineId: med.id, medicineName: med.name, quantity: qty, notes, status: "Ordered", date: new Date().toLocaleDateString() };
+    orders.push(newOrder);
+    closeOrderModalFunc();
+    renderAll();
+    alert(`Order placed to ${supplier} for ${med.name} (${qty} units)`);
+  }
+
+  function initScannerFlow() {
+    // simulate barcode scanning (prompt for simplicity but can be extended with real camera)
+    let fakeCode = prompt("📷 Simulated Barcode Scanner\nEnter/scan barcode number:", "890123456789");
+    if(fakeCode) {
+      let existing = medicines.find(m => m.barcode === fakeCode);
+      if(existing) {
+        alert(`Barcode found: ${existing.name}. You can edit stock.`);
+        openEditMedicine(existing.id);
+      } else {
+        document.getElementById("medBarcode").value = fakeCode;
+        document.getElementById("medName").focus();
+        document.getElementById("medicineModal").style.display = "flex";
+        document.getElementById("modalTitle").innerText = "Add via Barcode";
+        window.currentEditId = null;
+      }
+    }
+  }
+
+  function renderAll() {
+    updateDashboard();
+    renderInventoryTable(document.getElementById("searchInventory")?.value || "");
+    renderOrders();
+  }
+
+  // event listeners and navigation
+  function setupTabs() {
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const tabId = btn.dataset.tab;
+        document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active-pane'));
+        document.getElementById(`${tabId}Pane`).classList.add('active-pane');
+        if(tabId === 'inventory') renderInventoryTable(document.getElementById("searchInventory")?.value || "");
+        if(tabId === 'orders') renderOrders();
+        if(tabId === 'dashboard') updateDashboard();
+      });
+    });
+  }
+
+  document.getElementById("searchInventory")?.addEventListener('input', (e) => renderInventoryTable(e.target.value));
+  document.getElementById("manualAddBtn")?.addEventListener('click', () => { window.currentEditId = null; document.getElementById("medicineForm").reset(); document.getElementById("modalTitle").innerText = "➕ Add Medicine"; document.getElementById("medicineModal").style.display = "flex"; });
+  document.getElementById("quickAddBtn")?.addEventListener('click', () => document.getElementById("manualAddBtn").click());
+  document.getElementById("quickScanBtn")?.addEventListener('click', initScannerFlow);
+  document.getElementById("scanFromInventoryBtn")?.addEventListener('click', initScannerFlow);
+  document.getElementById("quickOrderBtn")?.addEventListener('click', openNewOrder);
+  document.getElementById("newOrderBtn")?.addEventListener('click', openNewOrder);
+  document.getElementById("closeModalBtn")?.addEventListener('click', closeModal);
+  document.getElementById("closeOrderModal")?.addEventListener('click', closeOrderModalFunc);
+  document.getElementById("saveOrderBtn")?.addEventListener('click', placeOrder);
+  document.getElementById("medicineForm")?.addEventListener('submit', saveMedicineFromModal);
+
+  loadSampleData();
+  setupTabs();
+</script>
+</body>
+</html>
+```
